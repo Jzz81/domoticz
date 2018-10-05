@@ -16595,15 +16595,25 @@ namespace http {
 								std::string szUsage2 = sd[2];
 								std::string szDeliv2 = sd[3];
 
-								float fUsage = (float)(atof(szUsage1.c_str()) + atof(szUsage2.c_str()));
-								float fDeliv = (float)(atof(szDeliv1.c_str()) + atof(szDeliv2.c_str()));
+								float fUsage_1 = static_cast<float>(atof(szUsage1.c_str()));
+								float fUsage_2 = static_cast<float>(atof(szUsage2.c_str()));
+								float fDeliv_1 = static_cast<float>(atof(szDeliv1.c_str()));
+								float fDeliv_2 = static_cast<float>(atof(szDeliv2.c_str()));
+								
+								fDeliv_1 = (fDeliv_1 < 10) ? 0 : fDeliv_1;
+								fDeliv_2 = (fDeliv_2 < 10) ? 0 : fDeliv_2;
 
-								if (fDeliv != 0)
+								if ((fDeliv_1 != 0) || (fDeliv_2 != 0))
 									bHaveDeliverd = true;
-								sprintf(szTmp, "%.3f", fUsage / divider);
+
+								sprintf(szTmp, "%.3f", fUsage_1 / divider);
 								root["result"][ii]["v"] = szTmp;
-								sprintf(szTmp, "%.3f", fDeliv / divider);
+								sprintf(szTmp, "%.3f", fUsage_2 / divider);
 								root["result"][ii]["v2"] = szTmp;
+								sprintf(szTmp, "%.3f", fDeliv_1 / divider);
+								root["result"][ii]["r1"] = szTmp;
+								sprintf(szTmp, "%.3f", fDeliv_2 / divider);
+								root["result"][ii]["r2"] = szTmp;
 								ii++;
 							}
 							if (bHaveDeliverd)
