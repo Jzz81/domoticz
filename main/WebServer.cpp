@@ -16654,91 +16654,102 @@ namespace http {
 							}
 						}
 					}
-					//add today (have to calculate it)
-					if (dType == pTypeP1Power)
+					//add today if nessesary (have to calculate it)
+					char szDateToday[40];
+					time_t datetoday;
+					time_t dateend;
+					struct tm tm2;
+					getNoon(datetoday, tm2, tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday); // We only want the date
+					sprintf(szDateToday, "%04d-%02d-%02d", tm2.tm_year + 1900, tm2.tm_mon + 1, tm2.tm_mday);
+					getNoon(dateend, tm2, std::stoi(srange.substr(11, 4)), std::stoi(srange.substr(16, 2)), std::stoi(srange.substr(19, 2)));
+					if (dateend >= datetoday)
 					{
-						result = m_sql.safe_query(
-							"SELECT MIN(Value1), MAX(Value1), MIN(Value2),"
-							" MAX(Value2),MIN(Value5), MAX(Value5),"
-							" MIN(Value6), MAX(Value6) "
-							"FROM MultiMeter WHERE (DeviceRowID==%" PRIu64 " AND Date>='%q')",
-							idx, szDateEnd.c_str());
-						bool bHaveDeliverd = false;
-						if (!result.empty())
+						szDateEnd = szDateToday; //If end date is after today then db query will yeild nothing.
+						if (dType == pTypeP1Power)
 						{
-							std::vector<std::string> sd = result[0];
-
-							unsigned long long total_min_usage_1 = std::strtoull(sd[0].c_str(), nullptr, 10);
-							unsigned long long total_max_usage_1 = std::strtoull(sd[1].c_str(), nullptr, 10);
-							unsigned long long total_min_usage_2 = std::strtoull(sd[4].c_str(), nullptr, 10);
-							unsigned long long total_max_usage_2 = std::strtoull(sd[5].c_str(), nullptr, 10);
-							unsigned long long total_real_usage;
-
-							unsigned long long total_min_deliv_1 = std::strtoull(sd[2].c_str(), nullptr, 10);
-							unsigned long long total_max_deliv_1 = std::strtoull(sd[3].c_str(), nullptr, 10);
-							unsigned long long total_min_deliv_2 = std::strtoull(sd[6].c_str(), nullptr, 10);
-							unsigned long long total_max_deliv_2 = std::strtoull(sd[7].c_str(), nullptr, 10);
-							unsigned long long total_real_deliv;
-
-							total_real_usage = (total_max_usage_1 + total_max_usage_2) - (total_min_usage_1 + total_min_usage_2);
-							total_real_deliv = (total_max_deliv_1 + total_max_deliv_2) - (total_min_deliv_1 + total_min_deliv_2);
-
-							if (total_real_deliv != 0)
-								bHaveDeliverd = true;
-
-							root["result"][ii]["d"] = szDateEnd;
-
-							sprintf(szTmp, "%llu", total_real_usage);
-							std::string szValue = szTmp;
-							sprintf(szTmp, "%.3f", atof(szValue.c_str()) / divider);
-							root["result"][ii]["v"] = szTmp;
-							sprintf(szTmp, "%llu", total_real_deliv);
-							szValue = szTmp;
-							sprintf(szTmp, "%.3f", atof(szValue.c_str()) / divider);
-							root["result"][ii]["v2"] = szTmp;
-							ii++;
-							if (bHaveDeliverd)
+							result = m_sql.safe_query(
+								"SELECT MIN(Value1), MAX(Value1), MIN(Value2),"
+								" MAX(Value2),MIN(Value5), MAX(Value5),"
+								" MIN(Value6), MAX(Value6) "
+								"FROM MultiMeter WHERE (DeviceRowID==%" PRIu64 " AND Date>='%q')",
+								idx, szDateEnd.c_str());
+							bool bHaveDeliverd = false;
+							if (!result.empty())
 							{
-								root["delivered"] = true;
+								std::vector<std::string> sd = result[0];
+
+								unsigned long long total_min_usage_1 = std::strtoull(sd[0].c_str(), nullptr, 10);
+								unsigned long long total_max_usage_1 = std::strtoull(sd[1].c_str(), nullptr, 10);
+								unsigned long long total_min_usage_2 = std::strtoull(sd[4].c_str(), nullptr, 10);
+								unsigned long long total_max_usage_2 = std::strtoull(sd[5].c_str(), nullptr, 10);
+								unsigned long long total_real_usage;
+
+								unsigned long long total_min_deliv_1 = std::strtoull(sd[2].c_str(), nullptr, 10);
+								unsigned long long total_max_deliv_1 = std::strtoull(sd[3].c_str(), nullptr, 10);
+								unsigned long long total_min_deliv_2 = std::strtoull(sd[6].c_str(), nullptr, 10);
+								unsigned long long total_max_deliv_2 = std::strtoull(sd[7].c_str(), nullptr, 10);
+								unsigned long long total_real_deliv;
+
+								total_real_usage = (total_max_usage_1 + total_max_usage_2) - (total_min_usage_1 + total_min_usage_2);
+								total_real_deliv = (total_max_deliv_1 + total_max_deliv_2) - (total_min_deliv_1 + total_min_deliv_2);
+
+								if (total_real_deliv != 0)
+									bHaveDeliverd = true;
+
+								root["result"][ii]["d"] = szDateEnd;
+
+								sprintf(szTmp, "%llu", total_real_usage);
+								std::string szValue = szTmp;
+								sprintf(szTmp, "%.3f", atof(szValue.c_str()) / divider);
+								root["result"][ii]["v"] = szTmp;
+								sprintf(szTmp, "%llu", total_real_deliv);
+								szValue = szTmp;
+								sprintf(szTmp, "%.3f", atof(szValue.c_str()) / divider);
+								root["result"][ii]["v2"] = szTmp;
+								ii++;
+								if (bHaveDeliverd)
+								{
+									root["delivered"] = true;
+								}
 							}
 						}
-					}
-					else if (!bIsManagedCounter)
-					{
-						result = m_sql.safe_query(
-							"SELECT MIN(Value), MAX(Value) FROM Meter WHERE (DeviceRowID==%" PRIu64 " AND Date>='%q')",
-							idx, szDateEnd.c_str());
-						if (!result.empty())
+						else if (!bIsManagedCounter)
 						{
-							std::vector<std::string> sd = result[0];
-							unsigned long long total_min = std::strtoull(sd[0].c_str(), nullptr, 10);
-							unsigned long long total_max = std::strtoull(sd[1].c_str(), nullptr, 10);
-							unsigned long long total_real;
-
-							total_real = total_max - total_min;
-							sprintf(szTmp, "%llu", total_real);
-
-							std::string szValue = szTmp;
-							switch (metertype)
+							result = m_sql.safe_query(
+								"SELECT MIN(Value), MAX(Value) FROM Meter WHERE (DeviceRowID==%" PRIu64 " AND Date>='%q')",
+								idx, szDateEnd.c_str());
+							if (!result.empty())
 							{
-							case MTYPE_ENERGY:
-							case MTYPE_ENERGY_GENERATED:
-								sprintf(szTmp, "%.3f", atof(szValue.c_str()) / divider);
-								szValue = szTmp;
-								break;
-							case MTYPE_GAS:
-								sprintf(szTmp, "%.2f", atof(szValue.c_str()) / divider);
-								szValue = szTmp;
-								break;
-							case MTYPE_WATER:
-								sprintf(szTmp, "%.3f", atof(szValue.c_str()) / divider);
-								szValue = szTmp;
-								break;
-							}
+								std::vector<std::string> sd = result[0];
+								unsigned long long total_min = std::strtoull(sd[0].c_str(), nullptr, 10);
+								unsigned long long total_max = std::strtoull(sd[1].c_str(), nullptr, 10);
+								unsigned long long total_real;
 
-							root["result"][ii]["d"] = szDateEnd;
-							root["result"][ii]["v"] = szValue;
-							ii++;
+								total_real = total_max - total_min;
+								sprintf(szTmp, "%llu", total_real);
+
+								std::string szValue = szTmp;
+								switch (metertype)
+								{
+								case MTYPE_ENERGY:
+								case MTYPE_ENERGY_GENERATED:
+									sprintf(szTmp, "%.3f", atof(szValue.c_str()) / divider);
+									szValue = szTmp;
+									break;
+								case MTYPE_GAS:
+									sprintf(szTmp, "%.2f", atof(szValue.c_str()) / divider);
+									szValue = szTmp;
+									break;
+								case MTYPE_WATER:
+									sprintf(szTmp, "%.3f", atof(szValue.c_str()) / divider);
+									szValue = szTmp;
+									break;
+								}
+
+								root["result"][ii]["d"] = szDateEnd;
+								root["result"][ii]["v"] = szValue;
+								ii++;
+							}
 						}
 					}
 				}
